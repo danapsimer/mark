@@ -20,7 +20,7 @@ func EnsureAncestry(
 	rest := ancestry
 
 	for i, title := range ancestry {
-		page, err := api.FindPage(space, title, "page")
+		page, err := api.FindPage(space, title, "page", false)
 		if err != nil {
 			return nil, karma.Format(
 				err,
@@ -95,7 +95,7 @@ func ValidateAncestry(
 	space string,
 	ancestry []string,
 ) (*confluence.PageInfo, error) {
-	page, err := api.FindPage(space, ancestry[len(ancestry)-1], "page")
+	page, err := api.FindPage(space, ancestry[len(ancestry)-1], "page", false)
 	if err != nil {
 		return nil, err
 	}

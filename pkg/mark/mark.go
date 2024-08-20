@@ -10,10 +10,11 @@ import (
 
 func ResolvePage(
 	dryRun bool,
+	returnBody bool,
 	api *confluence.API,
 	meta *Meta,
 ) (*confluence.PageInfo, *confluence.PageInfo, error) {
-	page, err := api.FindPage(meta.Space, meta.Title, meta.Type)
+	page, err := api.FindPage(meta.Space, meta.Title, meta.Type, returnBody)
 	if err != nil {
 		return nil, nil, karma.Format(
 			err,

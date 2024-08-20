@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ import (
 )
 
 const (
-	version     = "10.0.0"
+	version     = "10.0.1"
 	usage       = "A tool for updating Atlassian Confluence pages from markdown."
 	description = `Mark is a tool to update Atlassian Confluence pages from markdown. Documentation is available here: https://github.com/kovetskiy/mark`
 )
@@ -187,6 +188,12 @@ var flags = []cli.Flag{
 		Usage:     "Path for shared includes, used as a fallback if the include doesn't exist in the current directory.",
 		TakesFile: true,
 		EnvVars:   []string{"MARK_INCLUDE_PATH"},
+	}),
+	altsrc.NewBoolFlag(&cli.BoolFlag{
+		Name:    "update-if-changed",
+		Value:   false,
+		Usage:   "Update the page only if the content has changed.",
+		EnvVars: []string{"MARK_UPDATE_IF_CHANGED"},
 	}),
 }
 
@@ -394,7 +401,7 @@ func processFile(
 	markdown = mark.SubstituteLinks(markdown, links)
 
 	if cCtx.Bool("dry-run") {
-		_, _, err := mark.ResolvePage(cCtx.Bool("dry-run"), api, meta)
+		_, _, err := mark.ResolvePage(cCtx.Bool("dry-run"), false, api, meta)
 		if err != nil {
 			log.Fatalf(err, "unable to resolve page location")
 		}
@@ -415,7 +422,7 @@ func processFile(
 	var target *confluence.PageInfo
 
 	if meta != nil {
-		parent, page, err := mark.ResolvePage(cCtx.Bool("dry-run"), api, meta)
+		parent, page, err := mark.ResolvePage(cCtx.Bool("dry-run"), cCtx.Bool("update-if-changed"), api, meta)
 		if err != nil {
 			log.Fatalf(
 				karma.Describe("title", meta.Title).Reason(err),
@@ -518,6 +525,18 @@ func processFile(
 		html = buffer.String()
 	}
 
+	if cCtx.Bool("update-if-changed") {
+		currentHash := sha256.Sum256([]byte(target.Body.Storage.Value))
+		newHash := sha256.Sum256([]byte(html))
+		log.Debugf(nil, "html: %s", html)
+		log.Debugf(nil, "body: %s", target.Body.Storage.Value)
+		log.Debugf(nil, "Current hash: %x", currentHash)
+		log.Debugf(nil, "    New hash: %x", newHash)
+		if bytes.Equal(currentHash[:], newHash[:]) {
+			log.Infof(nil, "Page content has not changed, skipping update")
+			return target
+		}
+	}
 	err = api.UpdatePage(target, html, cCtx.Bool("minor-edit"), cCtx.String("version-message"), meta.Labels, meta.ContentAppearance)
 	if err != nil {
 		log.Fatal(err)

@@ -197,7 +197,7 @@ func getConfluenceLink(
 		url.QueryEscape(title),
 	)
 
-	page, err := api.FindPage(space, title, "page")
+	page, err := api.FindPage(space, title, "page", false)
 	if err != nil {
 		return "", karma.Format(err, "api: find page")
 	}

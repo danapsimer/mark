@@ -59,6 +59,12 @@ type PageInfo struct {
 	Links struct {
 		Full string `json:"webui"`
 	} `json:"_links"`
+
+	Body struct {
+		Storage struct {
+			Value string `json:"value"`
+		} `json:"storage"`
+	} `json:"body"`
 }
 
 type AttachmentInfo struct {
@@ -129,7 +135,7 @@ func NewAPI(baseURL string, username string, password string) *API {
 }
 
 func (api *API) FindRootPage(space string) (*PageInfo, error) {
-	page, err := api.FindPage(space, ``, "page")
+	page, err := api.FindPage(space, ``, "page", false)
 	if err != nil {
 		return nil, karma.Format(
 			err,
@@ -178,6 +184,7 @@ func (api *API) FindPage(
 	space string,
 	title string,
 	pageType string,
+	returnBody bool,
 ) (*PageInfo, error) {
 	result := struct {
 		Results []PageInfo `json:"results"`
@@ -187,6 +194,11 @@ func (api *API) FindPage(
 		"spaceKey": space,
 		"expand":   "ancestors,version",
 		"type":     pageType,
+	}
+
+	if returnBody {
+		log.Debugf(nil, "returning body")
+		payload["expand"] = payload["expand"] + ",body,body.storage"
 	}
 
 	if title != "" {
